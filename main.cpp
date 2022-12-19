@@ -4,13 +4,14 @@
 #include "hit.h"
 #include "texture.h"
 #include <cmath>
+#include "tree.h"
 
 int main()
 {
     using u32 = unsigned int;
 
-    u32 const width  = 1920u/10;
-    u32 const height = 1080u/10;
+    u32 const width  = 1920u;
+    u32 const height = 1080u;
 
     float const fwidth  =  width;
     float const fheight = height;
@@ -31,13 +32,14 @@ int main()
         .aspectRatio = fwidth / fheight,
         .verticalFOV =0.5f,
         */
+        
         //пингвин
         .position = {150.f, -150.f, 50.f},
         .at = {-200.f, 200.f, 50.f},
         .up = {1.f, -1.f, 4.f},
         .aspectRatio = fwidth / fheight,
         .verticalFOV =0.5f,
-
+        
     };
 
     std::ifstream file("Penguin.obj");
@@ -69,6 +71,9 @@ int main()
         triangles[i].t2.z = texture[round(t2x*width_png)+height_png-1-round(t2y*height_png)*width_png].b;
     }
 
+    auto nodes = MakeNodes(triangles);
+    Tree tree = createTree(nodes);
+
     auto const tonemap = [](vec3 const c)
     {
         float const exposure = 1.f;            //!!!!
@@ -81,13 +86,13 @@ int main()
         };
     };
 
-    auto const trace = [&triangles](Ray const &ray)
+    auto const trace = [&tree](Ray const &ray)
     {
         vec3 const lightDir   = normalize({200.f, -200.f, 200.f});
         vec3 const  backColor = {0.9f, 0.9f, 0.9f};
         vec3 const lightColor = {1.00f, 1.00f, 0.97f};
 
-        std::optional<Hit> const hit = closestHit(ray, triangles);
+        std::optional<Hit> const hit = closestHit(ray, tree);
         if(!hit)
             return dot(ray.direction, lightDir) < 0.999f
                 ? backColor
@@ -98,7 +103,7 @@ int main()
             .origin = hit->position,
             .direction = lightDir
         };
-        std::optional<Hit> const shadowHit = closestHit(shadowRay, triangles);
+        std::optional<Hit> const shadowHit = closestHit(shadowRay, tree);
         float const NL = std::max(0.f, dot(hit->normal, lightDir));
 
         vec3 const color = !shadowHit
